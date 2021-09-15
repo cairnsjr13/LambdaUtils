@@ -39,12 +39,13 @@ abstract class LoudFunctionalInterfaceTestBase {
 
   /**
    * This test ensures the class provides a "syntactic sugar" static method to easily create a loud instance.
-   * The method should be static, take in its own class type as a param, and return the same type.
+   * The method should be public, static, take in its own class type as a param, and return the same type.
    */
   @Test
   public void testOfMethod() {
     Method ofMethod = getOfMethod(classToTest);
     Assert.assertNotNull(ofMethod);
+    Assert.assertTrue(Modifier.isPublic(ofMethod.getModifiers()));
     Assert.assertTrue(Modifier.isStatic(ofMethod.getModifiers()));
     Assert.assertArrayEquals(new Class<?>[] { classToTest }, ofMethod.getParameterTypes());
     Assert.assertEquals(classToTest, ofMethod.getReturnType());
