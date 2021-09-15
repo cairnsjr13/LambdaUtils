@@ -3,69 +3,50 @@ package com.cairns.lambda;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
-import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.Assert;
 import org.junit.Test;
 
 /**
- * Base class for tests of loud extendsions of {@link FunctionalInterface}s.
+ * Base class for tests of loud extensions of {@link FunctionalInterface}s.
  *
  * @author cairnsjr13 - created 13/Sep/2021
  */
 abstract class LoudFunctionalInterfaceTestBase {
-  private static final int OF_METHOD = 0;
-  private static final int QUIET_METHOD = 1;
-  private static final int LOUD_METHOD = 2;
   private static final Class<?>[] expectedLoudExceptionTypes = { Exception.class };
 
   private final Class<?> classToTest;
-  private final Method[] methods;
 
-  // Impl note: we sort the methods array by length of name, this ensures of will be first, quiet second, and loud last.
   protected LoudFunctionalInterfaceTestBase(Class<?> classToTest) {
     this.classToTest = classToTest;
-    this.methods = classToTest.getMethods();
-    Comparator<Method> lengthCmp = Comparator.comparing((m) -> m.getName().length());
-    Arrays.sort(methods, lengthCmp.thenComparing(Method::getName));
   }
 
   /**
-   * This test ensures the class being tested has the proper structure and conventions, namely:
+   * This test ensures the class being tested has the proper inheritance structure and conventions, namely:
    *   - is an interface that is annotated as a {@link FunctionalInterface}
-   *   - has 3 methods
-   *   - extends a {@link FunctionalInterface}
+   *   - extends exactly one {@link FunctionalInterface}
    *   - is named by prefixing "Loud" to the base interface's name
-   *   - provides a default implementation for that base interface's method
    */
   @Test
-  public void testInheritanceAndStructure() throws ReflectiveOperationException {
+  public void testInheritance() {
     Assert.assertTrue(classToTest.isInterface());
     Assert.assertNotNull(classToTest.getAnnotation(FunctionalInterface.class));
-    Assert.assertEquals(3, methods.length);
-    Class<?>[] interfaces = classToTest.getInterfaces();
-    Assert.assertEquals(1, interfaces.length);
-    Class<?> baseInterface = interfaces[0];
+    Class<?> baseInterface = getQuietFunctionalInterface(classToTest);
     Assert.assertNotNull(baseInterface.getAnnotation(FunctionalInterface.class));
     Assert.assertEquals("Loud" + baseInterface.getSimpleName(), classToTest.getSimpleName());
-    Method functionalMethod = Arrays.stream(baseInterface.getMethods())
-        .filter((m) -> Modifier.isAbstract(m.getModifiers()))
-        .findFirst().get();
-    Method defaultedMethod = classToTest.getMethod(functionalMethod.getName(), functionalMethod.getParameterTypes());
-    Assert.assertEquals(methods[QUIET_METHOD], defaultedMethod);
-    Assert.assertTrue(defaultedMethod.isDefault());
-    Assert.assertEquals(functionalMethod.getReturnType(), defaultedMethod.getReturnType());
   }
 
   /**
    * This test ensures the class provides a "syntactic sugar" static method to easily create a loud instance.
+   * The method should be static, take in its own class type as a param, and return the same type.
    */
   @Test
   public void testOfMethod() {
-    Method ofMethod = methods[OF_METHOD];
-    Assert.assertEquals("of", ofMethod.getName());
+    Method ofMethod = getOfMethod(classToTest);
+    Assert.assertNotNull(ofMethod);
     Assert.assertTrue(Modifier.isStatic(ofMethod.getModifiers()));
-    Assert.assertEquals(1, ofMethod.getParameterCount());
-    Assert.assertEquals(classToTest, ofMethod.getParameterTypes()[0]);
+    Assert.assertArrayEquals(new Class<?>[] { classToTest }, ofMethod.getParameterTypes());
     Assert.assertEquals(classToTest, ofMethod.getReturnType());
   }
 
@@ -73,8 +54,9 @@ abstract class LoudFunctionalInterfaceTestBase {
    * This test ensures the "quiet" method is indeed defaulted and throws no exceptions.
    */
   @Test
-  public void testQuietMethod() {
-    Method quietMethod = methods[QUIET_METHOD];
+  public void testQuietMethod() throws ReflectiveOperationException {
+    Method quietMethod = getQuietMethod(classToTest);
+    Assert.assertNotNull(quietMethod);
     Assert.assertFalse(Modifier.isStatic(quietMethod.getModifiers()));
     Assert.assertTrue(quietMethod.isDefault());
     Assert.assertEquals(0, quietMethod.getExceptionTypes().length);
@@ -82,19 +64,64 @@ abstract class LoudFunctionalInterfaceTestBase {
 
   /**
    * This test ensures the "loud" method is:
-   *   - named by suffixing the quiet method name with "Loudly"
-   *   - is abstract (functional interface)
-   *   - has the same param list as the quiet method
+   *   - not static
+   *   - abstract (functional interface)
+   *   - has the same return type as the quiet method
    *   - throws {@link Exception}
    */
   @Test
-  public void testLoudMethod() {
-    Method quietMethod = methods[QUIET_METHOD];
-    Method loudMethod = methods[LOUD_METHOD];
-    Assert.assertEquals(quietMethod.getName() + "Loudly", loudMethod.getName());
-    Assert.assertFalse(Modifier.isStatic(quietMethod.getModifiers()));
+  public void testLoudMethod() throws ReflectiveOperationException {
+    Method quietMethod = getQuietMethod(classToTest);
+    Method loudMethod = getLoudMethod(classToTest);
+    Assert.assertNotNull(loudMethod);
+    Assert.assertFalse(Modifier.isStatic(loudMethod.getModifiers()));
     Assert.assertTrue(Modifier.isAbstract(loudMethod.getModifiers()));
-    Assert.assertArrayEquals(quietMethod.getParameterTypes(), loudMethod.getParameterTypes());
+    Assert.assertEquals(quietMethod.getReturnType(), loudMethod.getReturnType());
     Assert.assertArrayEquals(expectedLoudExceptionTypes, loudMethod.getExceptionTypes());
+  }
+
+  /**
+   * Retrieves the (expectedly 1) base interface class object of the given test class that lives outside its package.
+   */
+  private static Class<?> getQuietFunctionalInterface(Class<?> classToTest) {
+    Class<?>[] interfaces = classToTest.getInterfaces();
+    List<Class<?>> interfacesOutOfPkg = Arrays.stream(interfaces)
+        .filter((c) -> !classToTest.getPackage().equals(c.getPackage()))
+        .collect(Collectors.toList());
+    Assert.assertEquals(1, interfacesOutOfPkg.size());
+    return interfacesOutOfPkg.get(0);
+  }
+
+  /**
+   * Retrieves the of method from the given class we are testing.  Ensures there is only one method method named "of".
+   */
+  private static Method getOfMethod(Class<?> classToTest) {
+    List<Method> ofMethods = Arrays.stream(classToTest.getMethods())
+        .filter((m) -> "of".equals(m.getName()))
+        .collect(Collectors.toList());
+    Assert.assertEquals(1, ofMethods.size());
+    return ofMethods.get(0);
+  }
+
+  /**
+   * Retrieves the method that is being overridden and defaulted by the extension class being tested.
+   * Ensures the baseInterface has only 1 abstract method, finds the method in the class being tested
+   * that has the same name and parameter types, and returns that method.
+   */
+  private static Method getQuietMethod(Class<?> classToTest) throws ReflectiveOperationException {
+    List<Method> baseFnlMethods = Arrays.stream(getQuietFunctionalInterface(classToTest).getMethods())
+        .filter((m) -> Modifier.isAbstract(m.getModifiers()))
+        .collect(Collectors.toList());
+    Assert.assertEquals(1, baseFnlMethods.size());
+    Method baseFnlMethod = baseFnlMethods.get(0);
+    return classToTest.getMethod(baseFnlMethod.getName(), baseFnlMethod.getParameterTypes());
+  }
+
+  /**
+   * Retrieves the abstract method that is identified by suffixing "Loudly" to the quiet method.
+   */
+  private static Method getLoudMethod(Class<?> classToTest) throws ReflectiveOperationException {
+    Method quietMethod = getQuietMethod(classToTest);
+    return classToTest.getMethod(quietMethod.getName() + "Loudly", quietMethod.getParameterTypes());
   }
 }

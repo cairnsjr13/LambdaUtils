@@ -12,7 +12,7 @@ import java.util.function.BooleanSupplier;
  * @author cairnsjr13 - created 13/Sep/2021
  */
 @FunctionalInterface
-public interface LoudBooleanSupplier extends BooleanSupplier{
+public interface LoudBooleanSupplier extends BooleanSupplier {
   /**
    * Default implementation will call {@link #getAsBooleanLoudly()}, rethrow {@link RuntimeException}s,
    * and wrap checked {@link Exception}s with an {@link UncaughtCheckedException}.
