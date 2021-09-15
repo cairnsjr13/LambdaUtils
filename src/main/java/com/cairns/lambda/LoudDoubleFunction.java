@@ -7,6 +7,8 @@ import java.util.function.DoubleFunction;
  * All checked exceptions will be wrapped in {@link UncaughtCheckedException}.
  * Use the {@link #of(LoudDoubleFunction)} method to simplify creation with lambdas.
  *
+ * @apiNote This avoids autoboxing issues with primitive double to/from {@link Double}.
+ *
  * @author cairnsjr13 - created 15/Sep/2021
  *
  * @param <R> the type of the result of the function

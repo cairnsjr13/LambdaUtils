@@ -7,6 +7,8 @@ import java.util.function.DoubleConsumer;
  * All checked exceptions will be wrapped in {@link UncaughtCheckedException}.
  * Use the {@link #of(LoudDoubleConsumer)} method to simplify creation with lambdas.
  *
+ * @apiNote This avoids autoboxing issues with primitive double to/from {@link Double}.
+ *
  * @author cairnsjr13 - created 15/Sep/2021
  */
 @FunctionalInterface
