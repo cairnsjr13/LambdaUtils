@@ -23,7 +23,7 @@ public interface LoudObjDoubleConsumer<T> extends ObjDoubleConsumer<T> {
    */
   @Override
   default void accept(T t, double value) {
-    LoudRunnable.of(() -> acceptLoudly(t, value));
+    LoudRunnable.of(() -> acceptLoudly(t, value)).run();
   }
 
   /**
