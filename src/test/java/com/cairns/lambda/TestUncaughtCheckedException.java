@@ -1,5 +1,6 @@
 package com.cairns.lambda;
 
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import org.junit.Assert;
@@ -38,5 +39,15 @@ public class TestUncaughtCheckedException {
     Assert.assertFalse(Modifier.isPrivate(modifiers));
     Assert.assertFalse(Modifier.isProtected(modifiers));
     Assert.assertArrayEquals(expectedCtorParamTypes, ctor.getParameterTypes());
+  }
+
+  /**
+   * This test ensures the constructor properly passes the cause exception up the constructor chain.
+   */
+  @Test
+  public void testCause() {
+    IOException expectedCause = new IOException("Expected checked cause");
+    UncaughtCheckedException exception = new UncaughtCheckedException(expectedCause);
+    Assert.assertEquals(expectedCause, exception.getCause());
   }
 }
